@@ -1,0 +1,45 @@
+version: "3.7"
+services:
+  proxy:
+    # Runs jwilder's docker-gen to watch the docker API
+    # and generate a proxy automatically for each web server that is started.
+    # You have to set VIRTUAL_HOST for each web server to trigger it
+    container_name: pihole-proxy
+    networks:
+      - proxy_net
+    ports:
+      - "80:80/tcp"
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /tmp/docker.sock
+        read_only: true
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ./Dockerfile.nginx-proxy
+
+  web_content:
+    container_name: pihole-web-content
+    depends_on:
+      - proxy
+    image: nginx
+    environment:
+      VIRTUAL_HOST: "bellman.wildsong.biz"
+    networks:
+      - proxy_net
+    expose:
+      - "80"
+    volumes:
+      - type: volume
+        source: static_content
+        target: /usr/share/nginx/html
+    restart: unless-stopped
+ 
+volumes:
+    static_content:
+      name: proxy_static_content
+
+networks:
+  proxy_net:
+    name: proxy_net

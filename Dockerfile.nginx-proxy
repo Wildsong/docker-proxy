@@ -1,0 +1,8 @@
+FROM jwilder/nginx-proxy:latest
+# FIXME I should try using the alpine version instead of latest to get HTTP/2 and SSL support
+MAINTAINER Brian H Wilson "brian@wildsong.biz"
+
+# Limit access to IP address and local network
+ADD ./network_internal.conf /etc/nginx/
+
+ADD ./dhparam.pem /etc/nginx/dhparam/
