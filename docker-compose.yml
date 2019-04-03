@@ -4,42 +4,84 @@ services:
     # Runs jwilder's docker-gen to watch the docker API
     # and generate a proxy automatically for each web server that is started.
     # You have to set VIRTUAL_HOST for each web server to trigger it
-    container_name: pihole-proxy
+    container_name: proxy
+    image: jwilder/nginx-proxy:alpine
     networks:
       - proxy_net
     ports:
       - "80:80/tcp"
-    volumes:
-      - type: bind
-        source: /var/run/docker.sock
-        target: /tmp/docker.sock
-        read_only: true
-    restart: unless-stopped
-    build:
-      context: .
-      dockerfile: ./Dockerfile.nginx-proxy
-
-  web_content:
-    container_name: pihole-web-content
-    depends_on:
-      - proxy
-    image: nginx
+      - "443:443/tcp"
     environment:
-      VIRTUAL_HOST: "bellman.wildsong.biz"
+      DHPARAM_GENERATION: "false"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - ${PWD}/network_internal.conf:/etc/nginx/network_internal.conf
+      # Shared with letsencrypt
+      - conf:/etc/nginx/conf.d
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+      - dhparam:/etc/nginx/dhparam
+      - certs:/etc/nginx/certs:ro
+    restart: unless-stopped
+
+  letsencrypt:
+    # Companion that manages our Let's Encrypt certificates for us.
+    # It will create new certs automatically whenever a new server comes online.
+    container_name: proxy-letsencrypt
+    image: jrcs/letsencrypt-nginx-proxy-companion
     networks:
       - proxy_net
+    depends_on:
+      - proxy
+    environment:
+      NGINX_PROXY_CONTAINER: proxy
+      DHPARAM_GENERATION: "false"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Shared with letsencrypt
+      - conf:/etc/nginx/conf.d
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+      - dhparam:/etc/nginx/dhparam
+      - certs:/etc/nginx/certs:rw
+
+  web-server:
+    container_name: web-server
+    image: nginx:alpine
+    networks:
+      - proxy_net
+    env_file: .env
+    environment:
+      VIRTUAL_HOST: ${WEB_SERVER}
+      LETSENCRYPT_HOST: ${WEB_SERVER}
+      LETSENCRYPT_MAIL: ${WEB_SERVER_MAIL}
+      NETWORK_ACCESS: internal
     expose:
       - "80"
     volumes:
-      - type: volume
-        source: static_content
-        target: /usr/share/nginx/html
+      # Using a real filesystem makes it easy to switch
+      # back to a non-dockerized server anytime I need to.
+      - /var/www/html:/usr/share/nginx/html
     restart: unless-stopped
  
 volumes:
-    static_content:
-      name: proxy_static_content
+  conf:
+    name: proxy_conf
+      
+  vhost:
+    name: proxy_vhost
+      
+  html:
+    name: proxy_html
+
+  dhparam:
+    name: proxy_dhparam
+      
+  certs:
+    name: proxy_certs
 
 networks:
+  # Any services that want to be proxied need to use this network
   proxy_net:
     name: proxy_net
+    external: true
