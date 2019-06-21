@@ -58,7 +58,17 @@ docker-compose up
 ### CORS support
 
 To the proxy I added the nginx configuration to generate the right
-HTTP headers to avoid Cross Origin Scripting (CORS) error messages,
-see the file "cors.conf". It seems to be working with Chrome and
-Firefox on Windows.
+HTTP headers to avoid Cross Origin Scripting (CORS) error messages.
+
+In theory this is done with the "default_location" file,
+but it looks like I have created separate files for each virtual server
+that I proxy. For example I have geoserver.wildsong.biz_location
+and then put a copy of that file in
+
+   /home/docker/volumes/proxy_vhost/_data/
+   
+which is the volume mounted at /etc/nginx/vhost.d in the proxy docker.
+
+Currently I have set up these files to accept CORS requests from ANYWHERE.
+
 
