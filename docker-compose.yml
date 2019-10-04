@@ -1,4 +1,4 @@
-version: "3.7"
+version: "3.6"
 services:
   proxy:
     # Runs jwilder's docker-gen to watch the docker API
@@ -17,11 +17,11 @@ services:
       - /var/run/docker.sock:/tmp/docker.sock:ro
       - ${PWD}/network_internal.conf:/etc/nginx/network_internal.conf
       # Shared with letsencrypt
-      - conf:/etc/nginx/conf.d
-      - vhost:/etc/nginx/vhost.d
-      - html:/usr/share/nginx/html
-      - dhparam:/etc/nginx/dhparam
-      - certs:/etc/nginx/certs:ro
+      - proxy_conf:/etc/nginx/conf.d
+      - proxy_vhost:/etc/nginx/vhost.d
+      - proxy_html:/usr/share/nginx/html
+      - proxy_dhparam:/etc/nginx/dhparam
+      - proxy_certs:/etc/nginx/certs:ro
     restart: unless-stopped
 
   letsencrypt:
@@ -39,11 +39,11 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       # Shared with letsencrypt
-      - conf:/etc/nginx/conf.d
-      - vhost:/etc/nginx/vhost.d
-      - html:/usr/share/nginx/html
-      - dhparam:/etc/nginx/dhparam
-      - certs:/etc/nginx/certs:rw
+      - proxy_conf:/etc/nginx/conf.d
+      - proxy_vhost:/etc/nginx/vhost.d
+      - proxy_html:/usr/share/nginx/html
+      - proxy_dhparam:/etc/nginx/dhparam
+      - proxy_certs:/etc/nginx/certs:rw
 
   web-server:
     container_name: web-server
@@ -63,25 +63,15 @@ services:
       # back to a non-dockerized server anytime I need to.
       - /var/www/html:/usr/share/nginx/html
     restart: unless-stopped
- 
-volumes:
-  conf:
-    name: proxy_conf
-      
-  vhost:
-    name: proxy_vhost
-      
-  html:
-    name: proxy_html
 
-  dhparam:
-    name: proxy_dhparam
-      
-  certs:
-    name: proxy_certs
+volumes:
+  proxy_conf:
+  proxy_vhost:
+  proxy_html:
+  proxy_dhparam:
+  proxy_certs:
 
 networks:
   # Any services that want to be proxied need to use this network
   proxy_net:
-    name: proxy_net
     external: true
