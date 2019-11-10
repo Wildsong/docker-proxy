@@ -18,7 +18,7 @@ services:
       - ${PWD}/network_internal.conf:/etc/nginx/network_internal.conf
       # Shared with letsencrypt
       - proxy_conf:/etc/nginx/conf.d
-      - proxy_vhost:/etc/nginx/vhost.d
+      - ./vhost.d:/etc/nginx/vhost.d
       - proxy_html:/usr/share/nginx/html
       - proxy_dhparam:/etc/nginx/dhparam
       - proxy_certs:/etc/nginx/certs:ro
@@ -28,7 +28,7 @@ services:
     # Companion that manages our Let's Encrypt certificates for us.
     # It will create new certs automatically whenever a new server comes online.
     container_name: proxy-letsencrypt
-    image: jrcs/letsencrypt-nginx-proxy-companion
+    image: jrcs/letsencrypt-nginx-proxy-companion:v1.12
     networks:
       - proxy_net
     depends_on:
@@ -40,36 +40,41 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       # Shared with letsencrypt
       - proxy_conf:/etc/nginx/conf.d
-      - proxy_vhost:/etc/nginx/vhost.d
+      - ./vhost.d:/etc/nginx/vhost.d
       - proxy_html:/usr/share/nginx/html
       - proxy_dhparam:/etc/nginx/dhparam
       - proxy_certs:/etc/nginx/certs:rw
 
-  web-server:
-    container_name: web-server
-    image: nginx:alpine
-    networks:
-      - proxy_net
-    env_file: .env
-    environment:
-      VIRTUAL_HOST: ${WEB_SERVER}
-      LETSENCRYPT_HOST: ${WEB_SERVER}
-      LETSENCRYPT_MAIL: ${WEB_SERVER_MAIL}
-      NETWORK_ACCESS: internal
-    expose:
-      - "80"
-    volumes:
-      # Using a real filesystem makes it easy to switch
-      # back to a non-dockerized server anytime I need to.
-      - /var/www/html:/usr/share/nginx/html
-    restart: unless-stopped
+#  web-server:
+#    container_name: web-server
+#    image: nginx:alpine
+#    networks:
+#      - proxy_net
+#    env_file: .env
+#    environment:
+#      VIRTUAL_HOST: ${WEB_SERVER}
+#      LETSENCRYPT_HOST: ${WEB_SERVER}
+#      DEFAULT_EMAIL: ${VHOSTMAIL}
+#      NETWORK_ACCESS: internal
+#    expose:
+#      - "80"
+#    volumes:
+#      # Using a real filesystem makes it easy to switch
+#      # back to a non-dockerized server anytime I need to.
+#      - /var/www/html:/usr/share/nginx/html
+#    restart: unless-stopped
 
+# If you don't use the "name" feature you will get those stupid
+# docker-compose name prefixes like proxy-proxy_conf
 volumes:
   proxy_conf:
-  proxy_vhost:
+    name: proxy_conf
   proxy_html:
+    name: proxy_html
   proxy_dhparam:
+    name: proxy_dhparam
   proxy_certs:
+    name: proxy_certs
 
 networks:
   # Any services that want to be proxied need to use this network

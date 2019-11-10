@@ -4,7 +4,9 @@ This project uses jwilder/nginx-proxy to build a container that
 will automatically add and remove reverse proxy setups using nginx
 and jwilder's dockergen daemon.
 
-It is set up to maintain and use Let's Encrypt certificates.
+It uses JrCs/docker-letsencrypt-nginx-proxy-companion to 
+automatically set up to maintain and use Let's Encrypt certificates.
+(2019-11-09 Updated to v1.12 to support ACME V2)
 
 Each container that you want to proxy needs 3 things.
 
@@ -71,4 +73,18 @@ which is the volume mounted at /etc/nginx/vhost.d in the proxy docker.
 
 Currently I have set up these files to accept CORS requests from ANYWHERE.
 
+### Checking out what's going on
 
+The obvious ways are, when testing run "docker-compose up" without the "-d" option
+or when running daemon mode do "docker logs --follow proxy".
+
+Then bring a server online, for example geoserver. You should see the letsencrypt
+transactions happen to bring in certificates as needed.
+
+You can check the contents of the volumes too, they are
+
+* proxy_certs -- holds the letsencrypt certificates
+* proxy_conf -- nginx configuration
+* proxy_dhparam -- just holds the dhparam.pem file (this file gets copied to certs)
+* proxy_html -- holds static html files; nginx will install generic welcome files here by default
+* proxy_vhosts -- holds nginx virtual host files 
