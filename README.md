@@ -22,6 +22,7 @@ For example I run pi-hole so in the docker-compose.yml for pi-hole I have
     - proxy-net
   environment:
     VIRTUAL_HOST: pihole.wildsong.biz
+    VIRTUAL_PORT: 80 # This is only needed if you run on a different port.
   expose:
     - "80"
 ````
@@ -36,7 +37,7 @@ If you want the proxy to set up an SSL certificate too then it needs more:
 
 I created the dhparam volume and copied my old nginx dhparam.pem file
 into it, so that the proxy and letsencrypt containers share the same
-file and don't build a new one.
+file and don't build a new one. You can also set DHPARAM_GENERATION to true instead.
 
 ````
 docker volume create proxy_dhparam
@@ -47,6 +48,9 @@ sudo cp -r /etc/letsencrypt/* /home/docker/volumes/proxy_certs/_data/
 
 Also I created the certs volume and copied my old /etc/letsencrypt
 files into it.
+
+If you don't need to preserve old files you can just forget this and
+let docker create new (empty) volumes for you.
 
 ## How to start the proxy
 
@@ -67,7 +71,7 @@ but it looks like I have created separate files for each virtual server
 that I proxy. For example I have geoserver.wildsong.biz_location
 and then put a copy of that file in
 
-   /home/docker/volumes/proxy_vhost/_data/
+   /var/lib/docker/volumes/proxy_vhost/_data/
    
 which is the volume mounted at /etc/nginx/vhost.d in the proxy docker.
 
@@ -86,5 +90,4 @@ You can check the contents of the volumes too, they are
 * proxy_certs -- holds the letsencrypt certificates
 * proxy_conf -- nginx configuration
 * proxy_dhparam -- just holds the dhparam.pem file (this file gets copied to certs)
-* proxy_html -- holds static html files; nginx will install generic welcome files here by default
-* proxy_vhosts -- holds nginx virtual host files 
+* proxy_vhost -- holds nginx virtual host files 
