@@ -36,8 +36,7 @@ If you want the proxy to set up an SSL certificate too then it needs more:
 ````
 
 I created the dhparam volume and copied my old nginx dhparam.pem file
-into it, so that the proxy and letsencrypt containers share the same
-file and don't build a new one. You can also set DHPARAM_GENERATION to true instead.
+into it but you can let it create one for you and skip this.
 
 ````
 docker volume create proxy_dhparam
@@ -91,3 +90,4 @@ You can check the contents of the volumes too, they are
 * proxy_conf -- nginx configuration
 * proxy_dhparam -- just holds the dhparam.pem file (this file gets copied to certs)
 * proxy_vhost -- holds nginx virtual host files 
+* proxy_html -- letsencrypt uses this and needs to write files to it

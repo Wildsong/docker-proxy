@@ -11,16 +11,15 @@ services:
     ports:
       - "80:80/tcp"
       - "443:443/tcp"
-    environment:
-      DHPARAM_GENERATION: "true"
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
       - ${PWD}/network_internal.conf:/etc/nginx/network_internal.conf
       # Shared with letsencrypt
       - proxy_conf:/etc/nginx/conf.d
-      - ./vhost.d:/etc/nginx/vhost.d
-      - proxy_dhparam:/etc/nginx/dhparam
+      - proxy_vhost:/etc/nginx/vhost.d
+      - proxy_dhparam:/etc/nginx/dhparam:rw
       - proxy_certs:/etc/nginx/certs:ro
+      - proxy_html:/usr/share/nginx/html:ro
     restart: unless-stopped
 
   letsencrypt:
@@ -34,14 +33,16 @@ services:
       - proxy
     environment:
       NGINX_PROXY_CONTAINER: proxy
+      # Don't generate keys on BOTH proxy and letsencrypt, we share one!
       DHPARAM_GENERATION: "false"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       # Shared with letsencrypt
-      - proxy_conf:/etc/nginx/conf.d
+      - proxy_conf:/etc/nginx/conf.d:ro
       - proxy_vhost:/etc/nginx/vhost.d
-      - proxy_dhparam:/etc/nginx/dhparam
+      - proxy_dhparam:/etc/nginx/dhparam:ro
       - proxy_certs:/etc/nginx/certs:rw
+      - proxy_html:/usr/share/nginx/html:rw
 
 # If you don't use the "name" feature you will get those stupid
 # docker-compose name prefixes like proxy-proxy_conf
@@ -54,6 +55,8 @@ volumes:
     name: proxy_certs
   proxy_vhost:
     name: proxy_vhost
+  proxy_html:
+    name: proxy_html
 
 networks:
   # Any services that want to be proxied need to use this network
