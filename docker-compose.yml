@@ -43,6 +43,7 @@ services:
       - proxy_dhparam:/etc/nginx/dhparam:ro
       - proxy_certs:/etc/nginx/certs:rw
       - proxy_html:/usr/share/nginx/html:rw
+    restart: unless-stopped
 
 # If you don't use the "name" feature you will get those stupid
 # docker-compose name prefixes like proxy-proxy_conf

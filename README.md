@@ -78,11 +78,9 @@ Currently I have set up these files to accept CORS requests from ANYWHERE.
 
 ### Checking out what's going on
 
-The obvious ways are, when testing run "docker-compose up" without the "-d" option
-or when running daemon mode do "docker logs --follow proxy".
-
-Then bring a server online, for example geoserver. You should see the letsencrypt
-transactions happen to bring in certificates as needed.
+All output directed to STDOUT and STDERR from Docker containers is regarded as
+log data. I especially want to be able to analyze web logs to see what interesting things
+are going on, so the docker-compose file sets up logging.
 
 You can check the contents of the volumes too, they are
 
@@ -91,3 +89,9 @@ You can check the contents of the volumes too, they are
 * proxy_dhparam -- just holds the dhparam.pem file (this file gets copied to certs)
 * proxy_vhost -- holds nginx virtual host files 
 * proxy_html -- letsencrypt uses this and needs to write files to it
+
+Anyway, logging. It's set to use syslog and that means it's going into
+the logs on the host machine. It's up to you to make sure the logs
+don't overflow.  I am going to be setting up log analysis as a
+separate task. I wonder if I can do that in a Docker, too? Hmm.
+
