@@ -1,14 +1,16 @@
 version: "3.6"
 services:
+
+  # Runs jwilder's docker-gen to watch the docker API
+  # and generate a proxy automatically for each web server that is started.
+  # You have to set VIRTUAL_HOST for each web server to trigger it
   proxy:
-    # Runs jwilder's docker-gen to watch the docker API
-    # and generate a proxy automatically for each web server that is started.
-    # You have to set VIRTUAL_HOST for each web server to trigger it
-    container_name: proxy
     image: jwilder/nginx-proxy:alpine
-    networks:
-      - proxy_net
+    dns:
+      - 1.1.1.1
+      - 1.0.0.1
     ports:
+      # For Let's Encrypt to work, we have to allow both 80 and 443.
       - "80:80/tcp"
       - "443:443/tcp"
     environment:
@@ -23,47 +25,31 @@ services:
       - proxy_dhparam:/etc/nginx/dhparam
       - proxy_certs:/etc/nginx/certs:ro
     restart: unless-stopped
-
+        
+  # Companion that manages our Let's Encrypt certificates for us.
+  # It will create new certs automatically whenever a new server comes online.
   letsencrypt:
-    # Companion that manages our Let's Encrypt certificates for us.
-    # It will create new certs automatically whenever a new server comes online.
-    container_name: proxy-letsencrypt
     image: jrcs/letsencrypt-nginx-proxy-companion:v1.12
-    networks:
-      - proxy_net
+
+    dns:
+      - 1.1.1.1
+      - 1.0.0.1
+
     depends_on:
       - proxy
     environment:
       NGINX_PROXY_CONTAINER: proxy
       DHPARAM_GENERATION: "false"
+      DEFAULT_EMAIL: "brian@wildsong.biz"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      # Shared with letsencrypt
+      # Shared with nginx-proxy
       - proxy_conf:/etc/nginx/conf.d
       - ./vhost.d:/etc/nginx/vhost.d
       - proxy_html:/usr/share/nginx/html
       - proxy_dhparam:/etc/nginx/dhparam
       - proxy_certs:/etc/nginx/certs:rw
-
-#  web-server:
-#    container_name: web-server
-#    image: nginx:alpine
-#    networks:
-#      - proxy_net
-#    env_file: .env
-#    environment:
-#      VIRTUAL_HOST: ${WEB_SERVER}
-#      LETSENCRYPT_HOST: ${WEB_SERVER}
-#      DEFAULT_EMAIL: ${VHOSTMAIL}
-#      NETWORK_ACCESS: internal
-#    expose:
-#      - "80"
-#    volumes:
-#      # Using a real filesystem makes it easy to switch
-#      # back to a non-dockerized server anytime I need to.
-#      - /var/www/html:/usr/share/nginx/html
-#    restart: unless-stopped
-
+        
 # If you don't use the "name" feature you will get those stupid
 # docker-compose name prefixes like proxy-proxy_conf
 volumes:
