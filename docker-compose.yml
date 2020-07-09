@@ -10,11 +10,8 @@ services:
       - 1.1.1.1
       - 1.0.0.1
     ports:
-<<<<<<< HEAD
-      # For Let's Encrypt to work, we have to allow both 80 and 443.
-=======
+    # For Let's Encrypt to work, we have to allow both 80 and 443.
     # Port 80 will redirect to 443 if there is a vhost and it has a certificate
->>>>>>> origin/release
       - "80:80/tcp"
       - "443:443/tcp"
     volumes:
@@ -47,15 +44,6 @@ services:
       DEFAULT_EMAIL: "brian@wildsong.biz"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-<<<<<<< HEAD
-      # Shared with nginx-proxy
-      - proxy_conf:/etc/nginx/conf.d
-      - ./vhost.d:/etc/nginx/vhost.d
-      - proxy_html:/usr/share/nginx/html
-      - proxy_dhparam:/etc/nginx/dhparam
-      - proxy_certs:/etc/nginx/certs:rw
-        
-=======
       # Shared with letsencrypt
       - proxy_conf:/etc/nginx/conf.d:ro
       - proxy_vhost:/etc/nginx/vhost.d
@@ -64,7 +52,6 @@ services:
       - proxy_html:/usr/share/nginx/html:rw
     restart: unless-stopped
 
->>>>>>> origin/release
 # If you don't use the "name" feature you will get those stupid
 # docker-compose name prefixes like proxy-proxy_conf
 volumes:
