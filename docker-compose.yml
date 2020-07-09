@@ -10,20 +10,23 @@ services:
       - 1.1.1.1
       - 1.0.0.1
     ports:
+<<<<<<< HEAD
       # For Let's Encrypt to work, we have to allow both 80 and 443.
+=======
+    # Port 80 will redirect to 443 if there is a vhost and it has a certificate
+>>>>>>> origin/release
       - "80:80/tcp"
       - "443:443/tcp"
-    environment:
-      DHPARAM_GENERATION: "false"
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
       - ${PWD}/network_internal.conf:/etc/nginx/network_internal.conf
       # Shared with letsencrypt
       - proxy_conf:/etc/nginx/conf.d
-      - ./vhost.d:/etc/nginx/vhost.d
-      - proxy_html:/usr/share/nginx/html
-      - proxy_dhparam:/etc/nginx/dhparam
+      - proxy_vhost:/etc/nginx/vhost.d
+      - proxy_dhparam:/etc/nginx/dhparam:rw
       - proxy_certs:/etc/nginx/certs:ro
+      - proxy_html:/usr/share/nginx/html:ro
+      - proxy_htpasswd:/etc/nginx/htpasswd:ro
     restart: unless-stopped
         
   # Companion that manages our Let's Encrypt certificates for us.
@@ -39,10 +42,12 @@ services:
       - proxy
     environment:
       NGINX_PROXY_CONTAINER: proxy
+      # Don't generate keys on BOTH proxy and letsencrypt, we share one!
       DHPARAM_GENERATION: "false"
       DEFAULT_EMAIL: "brian@wildsong.biz"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+<<<<<<< HEAD
       # Shared with nginx-proxy
       - proxy_conf:/etc/nginx/conf.d
       - ./vhost.d:/etc/nginx/vhost.d
@@ -50,17 +55,31 @@ services:
       - proxy_dhparam:/etc/nginx/dhparam
       - proxy_certs:/etc/nginx/certs:rw
         
+=======
+      # Shared with letsencrypt
+      - proxy_conf:/etc/nginx/conf.d:ro
+      - proxy_vhost:/etc/nginx/vhost.d
+      - proxy_dhparam:/etc/nginx/dhparam:ro
+      - proxy_certs:/etc/nginx/certs:rw
+      - proxy_html:/usr/share/nginx/html:rw
+    restart: unless-stopped
+
+>>>>>>> origin/release
 # If you don't use the "name" feature you will get those stupid
 # docker-compose name prefixes like proxy-proxy_conf
 volumes:
   proxy_conf:
     name: proxy_conf
-  proxy_html:
-    name: proxy_html
   proxy_dhparam:
     name: proxy_dhparam
   proxy_certs:
     name: proxy_certs
+  proxy_vhost:
+    name: proxy_vhost
+  proxy_html:
+    name: proxy_html
+  proxy_htpasswd:
+    name: proxy_htpasswd
 
 networks:
   # Any services that want to be proxied need to use this network

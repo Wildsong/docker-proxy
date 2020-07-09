@@ -1,0 +1,11 @@
+# Emacs backup files
+*~
+
+# Logs
+logs
+*.log
+
+# dotenv environment variables file
+.env
+
+
