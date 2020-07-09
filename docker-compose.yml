@@ -9,6 +9,7 @@ services:
     networks:
       - proxy_net
     ports:
+    # Port 80 will redirect to 443 if there is a vhost and it has a certificate
       - "80:80/tcp"
       - "443:443/tcp"
     volumes:
@@ -20,6 +21,7 @@ services:
       - proxy_dhparam:/etc/nginx/dhparam:rw
       - proxy_certs:/etc/nginx/certs:ro
       - proxy_html:/usr/share/nginx/html:ro
+      - proxy_htpasswd:/etc/nginx/htpasswd:ro
     restart: unless-stopped
 
   letsencrypt:
@@ -58,6 +60,8 @@ volumes:
     name: proxy_vhost
   proxy_html:
     name: proxy_html
+  proxy_htpasswd:
+    name: proxy_htpasswd
 
 networks:
   # Any services that want to be proxied need to use this network
