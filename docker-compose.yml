@@ -4,39 +4,48 @@ services:
   # Runs jwilder's docker-gen to watch the docker API
   # and generate a proxy automatically for each web server that is started.
   # You have to set VIRTUAL_HOST for each web server to trigger it
+
   proxy:
     image: jwilder/nginx-proxy:alpine
-    dns:
-      - 1.1.1.1
-      - 1.0.0.1
     ports:
     # For Let's Encrypt to work, we have to allow both 80 and 443.
     # Port 80 will redirect to 443 if there is a vhost and it has a certificate
       - "80:80/tcp"
       - "443:443/tcp"
+    env_file: .env
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
       - ${PWD}/network_internal.conf:/etc/nginx/network_internal.conf
       # Shared with letsencrypt
       - proxy_conf:/etc/nginx/conf.d
+      - proxy_dhparam:/etc/nginx/dhparam:ro
       - proxy_vhost:/etc/nginx/vhost.d
-      - proxy_dhparam:/etc/nginx/dhparam:rw
+      - proxy_htpasswd:/etc/nginx/htpasswd:ro
       - proxy_certs:/etc/nginx/certs:ro
       - proxy_html:/usr/share/nginx/html:ro
-      - proxy_htpasswd:/etc/nginx/htpasswd:ro
-    restart: unless-stopped
-        
+    networks:
+      - proxy_net
+    deploy:
+      replicas: 1
+      update_config:
+        order: 'stop-first'
+      placement:
+        constraints: [node.role == manager]
+      
+  whoami:
+    image: jwilder/whoami
+    env_file: .env
+    environment:
+      VIRTUAL_HOST: whoami.${DOMAIN}
+      VIRTUAL_PORT: 8000
+    networks:
+      - proxy_net
+
   # Companion that manages our Let's Encrypt certificates for us.
   # It will create new certs automatically whenever a new server comes online.
   letsencrypt:
-    image: jrcs/letsencrypt-nginx-proxy-companion:v1.12
-
-    dns:
-      - 1.1.1.1
-      - 1.0.0.1
-
-    depends_on:
-      - proxy
+    image: jrcs/letsencrypt-nginx-proxy-companion:latest
+    env_file: .env
     environment:
       NGINX_PROXY_CONTAINER: proxy
       # Don't generate keys on BOTH proxy and letsencrypt, we share one!
@@ -44,16 +53,29 @@ services:
       DEFAULT_EMAIL: "brian@wildsong.biz"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      # Shared with letsencrypt
+      # Shared with letsencrypt, yes, it needs all these, and with these permissions.
       - proxy_conf:/etc/nginx/conf.d:ro
-      - proxy_vhost:/etc/nginx/vhost.d
       - proxy_dhparam:/etc/nginx/dhparam:ro
+      - proxy_vhost:/etc/nginx/vhost.d:rw
       - proxy_certs:/etc/nginx/certs:rw
       - proxy_html:/usr/share/nginx/html:rw
-    restart: unless-stopped
+    networks:
+      - proxy_net
+    deploy:
+      replicas: 1
+      update_config:
+        order: 'stop-first'
+      placement:
+        constraints: [node.role == manager]
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 3
+        window: 120s
 
-# If you don't use the "name" feature you will get those stupid
-# docker-compose name prefixes like proxy-proxy_conf
+
+# If you don't use the "name" feature you will get
+# name prefixes like proxy-proxy_conf
 volumes:
   proxy_conf:
     name: proxy_conf

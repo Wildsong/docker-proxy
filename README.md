@@ -13,9 +13,16 @@ Each container that you want to proxy needs 3 things.
 * It needs to define VIRTUAL_HOST with a unique name, because the proxy
 uses that name to create its entry for the service.
 * It needs to use proxy_net as its network so that the proxy can see the service.
-* It needs to EXPOSE the port you want to proxy. 
+* It needs to EXPOSE the port you want to proxy.
 
-For example I run pi-hole so in the docker-compose.yml for pi-hole I have
+Create the network, I use Docker Swarm so I use an overlay network.
+I make it "attachable" so that it can be shared among different apps.
+
+```bash
+   docker network create --driver=overlay --attachable proxy_net
+``` 
+
+Example for pi-hole; in the docker-compose.yml for pi-hole I have
 
 ````
   networks:
@@ -57,8 +64,15 @@ let docker create new (empty) volumes for you.
 * Customize .env
 * Launch it
 ````
-docker-compose up
+docker stack deploy -c docker-compose.yml proxy
 ````
+If it says it created a network called proxy_default you did something wrong.
+
+### Basic Auth
+
+Create an htpasswd file and put it in the proxy_htpasswd volume
+named for the virtual_host. In other words, do something like
+"cp htpasswd proxy_htpasswd/_data/whoami.DOMAIN.COM"
 
 ### CORS support
 
