@@ -5,8 +5,13 @@ services:
   # and generate a proxy automatically for each web server that is started.
   # You have to set VIRTUAL_HOST for each web server to trigger it
 
+  # Container that performs reverse proxy
+
   proxy:
     image: jwilder/nginx-proxy:alpine
+    labels:
+      # This is how letsencrypt finds the proxy when running in swarm mode
+      com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy: "true"
     ports:
     # For Let's Encrypt to work, we have to allow both 80 and 443.
     # Port 80 will redirect to 443 if there is a vhost and it has a certificate
@@ -15,11 +20,11 @@ services:
     env_file: .env
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
-      - ${PWD}/network_internal.conf:/etc/nginx/network_internal.conf
+      - ./network_internal.conf:/etc/nginx/network_internal.conf
       # Shared with letsencrypt
       - proxy_conf:/etc/nginx/conf.d
-      - proxy_dhparam:/etc/nginx/dhparam:ro
       - proxy_vhost:/etc/nginx/vhost.d
+      - proxy_dhparam:/etc/nginx/dhparam:ro
       - proxy_htpasswd:/etc/nginx/htpasswd:ro
       - proxy_certs:/etc/nginx/certs:ro
       - proxy_html:/usr/share/nginx/html:ro
@@ -32,22 +37,13 @@ services:
       placement:
         constraints: [node.role == manager]
       
-  whoami:
-    image: jwilder/whoami
-    env_file: .env
-    environment:
-      VIRTUAL_HOST: whoami.${DOMAIN}
-      VIRTUAL_PORT: 8000
-    networks:
-      - proxy_net
-
-  # Companion that manages our Let's Encrypt certificates for us.
+  # Container that manages Let's Encrypt certificates.
   # It will create new certs automatically whenever a new server comes online.
+  
   letsencrypt:
     image: jrcs/letsencrypt-nginx-proxy-companion:latest
     env_file: .env
     environment:
-      NGINX_PROXY_CONTAINER: proxy
       # Don't generate keys on BOTH proxy and letsencrypt, we share one!
       DHPARAM_GENERATION: "false"
       DEFAULT_EMAIL: "brian@wildsong.biz"
@@ -55,8 +51,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       # Shared with letsencrypt, yes, it needs all these, and with these permissions.
       - proxy_conf:/etc/nginx/conf.d:ro
-      - proxy_dhparam:/etc/nginx/dhparam:ro
       - proxy_vhost:/etc/nginx/vhost.d:rw
+      - proxy_dhparam:/etc/nginx/dhparam:ro
       - proxy_certs:/etc/nginx/certs:rw
       - proxy_html:/usr/share/nginx/html:rw
     networks:
@@ -73,18 +69,17 @@ services:
         max_attempts: 3
         window: 120s
 
-
 # If you don't use the "name" feature you will get
 # name prefixes like proxy-proxy_conf
 volumes:
   proxy_conf:
     name: proxy_conf
+  proxy_vhost:
+    name: proxy_vhost
   proxy_dhparam:
     name: proxy_dhparam
   proxy_certs:
     name: proxy_certs
-  proxy_vhost:
-    name: proxy_vhost
   proxy_html:
     name: proxy_html
   proxy_htpasswd:
