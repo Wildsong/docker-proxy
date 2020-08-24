@@ -47,29 +47,25 @@ services:
       - proxy_html:/usr/share/nginx/html:rw
       - proxy_certs:/etc/nginx/certs:rw
 
-#  web-server:
-#    container_name: web-server
-#    image: nginx:alpine
-#    networks:
-#      - proxy_net
-#    env_file: .env
-#    environment:
-#      VIRTUAL_HOST: ${WEB_SERVER}
-#      LETSENCRYPT_HOST: ${WEB_SERVER}
-#      DEFAULT_EMAIL: ${VHOSTMAIL}
-#      NETWORK_ACCESS: internal
-#    expose:
-#      - "80"
-#    volumes:
-#      # Using a real filesystem makes it easy to switch
-#      # back to a non-dockerized server anytime I need to.
-#      - /var/www/html:/usr/share/nginx/html
-#    restart: unless-stopped
-#    logging:
-#      driver: syslog
-#      options:
-#        syslog-address: ${SYSLOG_HOST}
-#        tag: "{{.Name}}}"
+  web-server:
+    # Generic static web content is served here.
+    # My intention is that you'll want a landing page
+    # for the hostname and it's convenient to package
+    # it with the proxy and let'sencrypt containers.
+    image: nginx:alpine
+    networks:
+      - proxy_net
+    env_file: .env
+    environment:
+      VIRTUAL_HOST: ${WEB_SERVER}
+      LETSENCRYPT_HOST: ${WEB_SERVER}
+      DEFAULT_EMAIL: ${VHOSTMAIL}
+      NETWORK_ACCESS: internal
+    expose:
+      - "80"
+    volumes:
+      - ./static_content:/usr/share/nginx/html
+    restart: unless-stopped
 
 # If you don't use the "name" feature you will get those stupid
 # docker-compose name prefixes like proxy-proxy_conf

@@ -58,21 +58,13 @@ files into it.
 If you don't need to preserve old files you can just forget this and
 let docker create new (empty) volumes for you.
 
-## How to start the proxy
-
-* Copy sample.env to .env
-* Customize .env
-* Launch it
-````
-docker stack deploy -c docker-compose.yml proxy
-````
-If it says it created a network called proxy_default you did something wrong.
 
 ### Basic Auth
 
 Create an htpasswd file and put it in the proxy_htpasswd volume
 named for the virtual_host. In other words, do something like
 "cp htpasswd proxy_htpasswd/_data/whoami.DOMAIN.COM"
+
 
 ### CORS support
 
@@ -108,4 +100,45 @@ Anyway, logging. It's set to use syslog and that means it's going into
 the logs on the host machine. It's up to you to make sure the logs
 don't overflow.  I am going to be setting up log analysis as a
 separate task. I wonder if I can do that in a Docker, too? Hmm.
+
+
+
+Regarding this error
+
+    $ docker logs proxy_letsencrypt.1.jx1ski4niofyam6vj95vyxn2t
+    jq: error (at <stdin>:1): Cannot iterate over null (null)
+    Error: can't get docker-gen container id !
+    If you are running a three containers setup, check that you are doing one of the following :
+        - Set the NGINX_DOCKER_GEN_CONTAINER env var on the letsencrypt-companion container to the name of the docker-gen container.
+        - Label the docker-gen container to use with 'com.github.jrcs.letsencrypt_nginx_proxy_companion.docker_gen.'
+
+NONE OF THE SUGGESTIONS IT GIVES HELP!!
+
+I am not running a 3 container setup. This means the nginx instance is dying,
+try removing default.conf file (it's generated automatically anyway)
+and start again...
+
+The other relevant red flag is in the nginx logs and it says this
+
+    invalid number of arguments in "upstream" directive in /etc/nginx/conf.d/default.conf
+
+
+## How to start the proxy
+
+* Copy sample.env to .env
+* Customize .env
+* Launch it
+
+I still find I can't get the damn swarm version to work, so at the moment this is wrong.
+````
+docker stack deploy -c docker-compose.yml proxy
+````
+If it says it created a network called proxy_default you did something wrong.
+
+JUST DO THIS
+
+    docker-compose up
+
+and fix the swarm version some day.
+
 
