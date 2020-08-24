@@ -1,89 +1,87 @@
 version: "3.6"
 services:
-
-  # Runs jwilder's docker-gen to watch the docker API
-  # and generate a proxy automatically for each web server that is started.
-  # You have to set VIRTUAL_HOST for each web server to trigger it
-
-  # Container that performs reverse proxy
-
   proxy:
+    # Runs jwilder's docker-gen to watch the docker API
+    # and generate a proxy automatically for each web server that is started.
+    # You have to set VIRTUAL_HOST for each web server to trigger it
+    container_name: proxy
     image: jwilder/nginx-proxy:alpine
-    labels:
-      # This is how letsencrypt finds the proxy when running in swarm mode
-      com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy: "true"
+    networks:
+      - proxy_net
     ports:
-    # For Let's Encrypt to work, we have to allow both 80 and 443.
-    # Port 80 will redirect to 443 if there is a vhost and it has a certificate
+    # *** LET'S ENCRYPT WON'T WORK UNLESS port 80 and 443 are both visible on the INTERNET  ***
+    # *** If you disable port 80, the problem will be masked until a vhost needs to get     ***
+    # *** new certs. It will complain about .well-known/* being inaccessible.               ***
       - "80:80/tcp"
       - "443:443/tcp"
-    env_file: .env
+    environment:
+      DHPARAM_GENERATION: "false"
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
-      - ./network_internal.conf:/etc/nginx/network_internal.conf
-      # Shared with letsencrypt
+      - ${PWD}/network_internal.conf:/etc/nginx/network_internal.conf
+      # Shared with letsencrypt, note certs ro
       - proxy_conf:/etc/nginx/conf.d
-      - proxy_vhost:/etc/nginx/vhost.d
+      - ./vhost.d:/etc/nginx/vhost.d
       - proxy_dhparam:/etc/nginx/dhparam:ro
-      - proxy_htpasswd:/etc/nginx/htpasswd:ro
+      - proxy_html:/usr/share/nginx/html
       - proxy_certs:/etc/nginx/certs:ro
-      - proxy_html:/usr/share/nginx/html:ro
+    restart: unless-stopped
+        
+  letsencrypt:
+    # Companion that manages our Let's Encrypt certificates for us.
+    # It will create new certs automatically whenever a new server comes online.
+    image: jrcs/letsencrypt-nginx-proxy-companion:v1.12
     networks:
       - proxy_net
-    deploy:
-      replicas: 1
-      update_config:
-        order: 'stop-first'
-      placement:
-        constraints: [node.role == manager]
-      
-  # Container that manages Let's Encrypt certificates.
-  # It will create new certs automatically whenever a new server comes online.
-  
-  letsencrypt:
-    image: jrcs/letsencrypt-nginx-proxy-companion:latest
-    env_file: .env
+    depends_on:
+      - proxy
     environment:
-      # Don't generate keys on BOTH proxy and letsencrypt, we share one!
+      NGINX_PROXY_CONTAINER: proxy
       DHPARAM_GENERATION: "false"
-      DEFAULT_EMAIL: "brian@wildsong.biz"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      # Shared with letsencrypt, yes, it needs all these, and with these permissions.
-      - proxy_conf:/etc/nginx/conf.d:ro
-      - proxy_vhost:/etc/nginx/vhost.d:rw
-      - proxy_dhparam:/etc/nginx/dhparam:ro
-      - proxy_certs:/etc/nginx/certs:rw
+      # Shared with proxy, certs and html have to be writable
+      - proxy_conf:/etc/nginx/conf.d
+      - ./vhost.d:/etc/nginx/vhost.d
+      - proxy_dhparam:/etc/nginx/dhparam:rw
       - proxy_html:/usr/share/nginx/html:rw
-    networks:
-      - proxy_net
-    deploy:
-      replicas: 1
-      update_config:
-        order: 'stop-first'
-      placement:
-        constraints: [node.role == manager]
-      restart_policy:
-        condition: any
-        delay: 5s
-        max_attempts: 3
-        window: 120s
+      - proxy_certs:/etc/nginx/certs:rw
 
-# If you don't use the "name" feature you will get
-# name prefixes like proxy-proxy_conf
+#  web-server:
+#    container_name: web-server
+#    image: nginx:alpine
+#    networks:
+#      - proxy_net
+#    env_file: .env
+#    environment:
+#      VIRTUAL_HOST: ${WEB_SERVER}
+#      LETSENCRYPT_HOST: ${WEB_SERVER}
+#      DEFAULT_EMAIL: ${VHOSTMAIL}
+#      NETWORK_ACCESS: internal
+#    expose:
+#      - "80"
+#    volumes:
+#      # Using a real filesystem makes it easy to switch
+#      # back to a non-dockerized server anytime I need to.
+#      - /var/www/html:/usr/share/nginx/html
+#    restart: unless-stopped
+#    logging:
+#      driver: syslog
+#      options:
+#        syslog-address: ${SYSLOG_HOST}
+#        tag: "{{.Name}}}"
+
+# If you don't use the "name" feature you will get those stupid
+# docker-compose name prefixes like proxy-proxy_conf
 volumes:
   proxy_conf:
     name: proxy_conf
-  proxy_vhost:
-    name: proxy_vhost
+  proxy_html:
+    name: proxy_html
   proxy_dhparam:
     name: proxy_dhparam
   proxy_certs:
     name: proxy_certs
-  proxy_html:
-    name: proxy_html
-  proxy_htpasswd:
-    name: proxy_htpasswd
 
 networks:
   # Any services that want to be proxied need to use this network
