@@ -4,7 +4,9 @@ services:
     # Runs jwilder's docker-gen to watch the docker API
     # and generate a proxy automatically for each web server that is started.
     # You have to set VIRTUAL_HOST for each web server to trigger it
-    container_name: proxy
+
+    #container_name: proxy
+    
     image: jwilder/nginx-proxy:alpine
     networks:
       - proxy_net
@@ -14,18 +16,18 @@ services:
     # *** new certs. It will complain about .well-known/* being inaccessible.               ***
       - "80:80/tcp"
       - "443:443/tcp"
-    environment:
-      DHPARAM_GENERATION: "false"
     volumes:
-      - /var/run/docker.sock:/tmp/docker.sock:ro
-      - ${PWD}/network_internal.conf:/etc/nginx/network_internal.conf
+      - ./network_internal.conf:/etc/nginx/network_internal.conf
       # Shared with letsencrypt, note certs ro
-      - proxy_conf:/etc/nginx/conf.d
+      - html:/usr/share/nginx/html
+      - dhparam:/etc/nginx/dhparam:ro
       - ./vhost.d:/etc/nginx/vhost.d
-      - proxy_dhparam:/etc/nginx/dhparam:ro
-      - proxy_html:/usr/share/nginx/html
-      - proxy_certs:/etc/nginx/certs:ro
-    restart: unless-stopped
+      - certs:/etc/nginx/certs:ro
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    # This labels the container, in either compose or swarm.
+    labels:
+      - "com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy"
+
         
   letsencrypt:
     # Companion that manages our Let's Encrypt certificates for us.
@@ -35,17 +37,12 @@ services:
       - proxy_net
     depends_on:
       - proxy
-    environment:
-      NGINX_PROXY_CONTAINER: proxy
-      DHPARAM_GENERATION: "false"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       # Shared with proxy, certs and html have to be writable
-      - proxy_conf:/etc/nginx/conf.d
+      - certs:/etc/nginx/certs:rw
       - ./vhost.d:/etc/nginx/vhost.d
-      - proxy_dhparam:/etc/nginx/dhparam:rw
-      - proxy_html:/usr/share/nginx/html:rw
-      - proxy_certs:/etc/nginx/certs:rw
+      - html:/usr/share/nginx/html:rw
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
   web-server:
     # Generic static web content is served here.
@@ -55,29 +52,27 @@ services:
     image: nginx:alpine
     networks:
       - proxy_net
-    env_file: .env
+#    env_file: .env
     environment:
-      VIRTUAL_HOST: ${WEB_SERVER}
-      LETSENCRYPT_HOST: ${WEB_SERVER}
-      DEFAULT_EMAIL: ${VHOSTMAIL}
+      VIRTUAL_HOST: bellman.wildsong.biz
+      LETSENCRYPT_HOST: bellman.wildsong.biz
+      DEFAULT_EMAIL: brian@wildsong.biz
+#      VIRTUAL_HOST: ${WEB_SERVER}
+#      LETSENCRYPT_HOST: ${WEB_SERVER}
+#      DEFAULT_EMAIL: ${VHOSTMAIL}
       NETWORK_ACCESS: internal
-    expose:
-      - "80"
     volumes:
       - ./static_content:/usr/share/nginx/html
-    restart: unless-stopped
 
 # If you don't use the "name" feature you will get those stupid
 # docker-compose name prefixes like proxy-proxy_conf
 volumes:
-  proxy_conf:
-    name: proxy_conf
-  proxy_html:
+  html:
     name: proxy_html
-  proxy_dhparam:
-    name: proxy_dhparam
-  proxy_certs:
+  certs:
     name: proxy_certs
+  dhparam:
+    name: proxy_dhparam
 
 networks:
   # Any services that want to be proxied need to use this network
