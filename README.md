@@ -129,16 +129,9 @@ The other relevant red flag is in the nginx logs and it says this
 * Customize .env
 * Launch it
 
-I still find I can't get the damn swarm version to work, so at the moment this is wrong.
 ````
 docker stack deploy -c docker-compose.yml proxy
 ````
 If it says it created a network called proxy_default you did something wrong.
-
-JUST DO THIS
-
-    docker-compose up
-
-and fix the swarm version some day.
 
 
