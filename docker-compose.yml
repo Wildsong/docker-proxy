@@ -1,12 +1,26 @@
-version: "3.6"
+version: "3.7"
+volumes:
+  html:
+    name: proxy_html
+  certs:
+    name: proxy_certs
+  dhparam:
+    name: proxy_dhparam
+  acme:
+    name: proxy_letsencrypt_acme
+
+networks:
+  # Any services that want to be proxied need to use this network
+  proxy_net:
+    name: proxy_net
+    external: true
+
 services:
   proxy:
     # Runs jwilder's docker-gen to watch the docker API
     # and generate a proxy automatically for each web server that is started.
     # You have to set VIRTUAL_HOST for each web server to trigger it
 
-    #container_name: proxy
-    
     image: jwilder/nginx-proxy:alpine
     networks:
       - proxy_net
@@ -27,54 +41,67 @@ services:
     # This labels the container, in either compose or swarm.
     labels:
       - "com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy"
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        window: 15s
 
         
   letsencrypt:
     # Companion that manages our Let's Encrypt certificates for us.
     # It will create new certs automatically whenever a new server comes online.
-    image: jrcs/letsencrypt-nginx-proxy-companion:v1.12
+    image: jrcs/letsencrypt-nginx-proxy-companion:2.0.1
     networks:
       - proxy_net
-    depends_on:
-      - proxy
     volumes:
       # Shared with proxy, certs and html have to be writable
       - certs:/etc/nginx/certs:rw
       - ./vhost.d:/etc/nginx/vhost.d
       - html:/usr/share/nginx/html:rw
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - acme:/etc/acme.sh
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        window: 15s
 
-  web-server:
+
+  webserver:
     # Generic static web content is served here.
     # My intention is that you'll want a landing page
     # for the hostname and it's convenient to package
-    # it with the proxy and let'sencrypt containers.
-    image: nginx:alpine
+    # it with the proxy and let's encrypt containers.
+
+    # docker-compose can use the env_file
+    # but 'docker stack' cannot, 
+    # so we bake the env settings into a custom image
+    # using 'docker-compose build'.
+    
+    image: wildsong/proxy-webserver:latest
+    env_file: .env
+    build:
+      context: .
+      dockerfile: Dockerfile.webserver
+      args:
+        - VIRTUAL_HOST=${VIRTUAL_HOST}
+        - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
     networks:
       - proxy_net
-#    env_file: .env
-    environment:
-      VIRTUAL_HOST: bellman.wildsong.biz
-      LETSENCRYPT_HOST: bellman.wildsong.biz
-      DEFAULT_EMAIL: brian@wildsong.biz
-#      VIRTUAL_HOST: ${WEB_SERVER}
-#      LETSENCRYPT_HOST: ${WEB_SERVER}
-#      DEFAULT_EMAIL: ${VHOSTMAIL}
-      NETWORK_ACCESS: internal
     volumes:
       - ./static_content:/usr/share/nginx/html
-
-# If you don't use the "name" feature you will get those stupid
-# docker-compose name prefixes like proxy-proxy_conf
-volumes:
-  html:
-    name: proxy_html
-  certs:
-    name: proxy_certs
-  dhparam:
-    name: proxy_dhparam
-
-networks:
-  # Any services that want to be proxied need to use this network
-  proxy_net:
-    external: true
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        window: 15s
+    healthcheck:
+      test: ["CMD", "curl", "-f", "https://bellman.wildsong.biz/health.html"]
+      interval: 10m
+      timeout: 10s
+      retries: 3
+      start_period: 40s
