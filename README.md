@@ -135,3 +135,9 @@ docker stack deploy -c docker-compose.yml proxy
 If it says it created a network called proxy_default you did something wrong.
 
 
+### Some commands
+
+Reload nginx without redeploy
+
+    docker exec -it proxy_proxy* sh -c "nginx -s reload"
+
