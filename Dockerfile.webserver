@@ -1,0 +1,16 @@
+FROM nginx:alpine
+LABEL maintainer="Brian Wilson <brian@wildsong.biz>"
+LABEL version="1.1"
+LABEL biz.wildsong.name="proxy-webserver"
+
+ARG VIRTUAL_HOST=web.sample.com
+ARG LETSENCRYPT_EMAIL=webmaster@sample.com
+ARG NETWORK_ACCESS
+
+ENV VIRTUAL_HOST=${VIRTUAL_HOST}
+ENV LETSENCRYPT_HOST=${VIRTUAL_HOST}
+ENV LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+ENV NETWORK_ACCESS=${NETWORK_ACCESS}
+
+CMD ["nginx", "-g", "daemon off;"]
+
