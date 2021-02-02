@@ -23,7 +23,12 @@ services:
 
     image: jwilder/nginx-proxy:alpine
     networks:
-      - proxy_net
+      proxy_net:
+        aliases:
+          - proxy
+    environment:
+      # This deals with raw IP address hits on https://ip.address.here
+      DEFAULT_HOST: bellman.wildsong.biz
     ports:
     # *** LET'S ENCRYPT WON'T WORK UNLESS port 80 and 443 are both visible on the INTERNET  ***
     # *** If you disable port 80, the problem will be masked until a vhost needs to get     ***
@@ -54,7 +59,9 @@ services:
     # It will create new certs automatically whenever a new server comes online.
     image: jrcs/letsencrypt-nginx-proxy-companion:2.0.1
     networks:
-      - proxy_net
+      proxy_net:
+        aliases:
+          - letsencrypt
     volumes:
       # Shared with proxy, certs and html have to be writable
       - certs:/etc/nginx/certs:rw
@@ -90,7 +97,9 @@ services:
         - VIRTUAL_HOST=${VIRTUAL_HOST}
         - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
     networks:
-      - proxy_net
+      proxy_net:
+        aliases:
+          - webserver
     volumes:
       - ./static_content:/usr/share/nginx/html
     deploy:
