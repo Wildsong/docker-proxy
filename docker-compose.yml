@@ -26,9 +26,6 @@ services:
       proxy_net:
         aliases:
           - proxy
-    environment:
-      # This deals with raw IP address hits on https://ip.address.here
-      DEFAULT_HOST: bellman.wildsong.biz
     ports:
     # *** LET'S ENCRYPT WON'T WORK UNLESS port 80 and 443 are both visible on the INTERNET  ***
     # *** If you disable port 80, the problem will be masked until a vhost needs to get     ***
