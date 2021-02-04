@@ -8,7 +8,13 @@ volumes:
     name: proxy_dhparam
   acme:
     name: proxy_letsencrypt_acme
+  conf:
+    name: proxy_conf
+ 
+  vhost.d: 
+    external: true
 
+   
 networks:
   # Any services that want to be proxied need to use this network
   proxy_net:
@@ -16,33 +22,38 @@ networks:
     external: true
 
 services:
-  proxy:
-    # Runs jwilder's docker-gen to watch the docker API
-    # and generate a proxy automatically for each web server that is started.
-    # You have to set VIRTUAL_HOST for each web server to trigger it
-
-    image: jwilder/nginx-proxy:alpine
+  nginx:
+    # This is the nginx reverse proxy and static content server.
+    # This image has values from .env baked into it. Otherwise, it's a standard nginx.
+    image: nginx
+    labels:
+      - "com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy"
     networks:
       proxy_net:
         aliases:
-          - proxy
-    ports:
+          - nginx
+  
     # *** LET'S ENCRYPT WON'T WORK UNLESS port 80 and 443 are both visible on the INTERNET  ***
     # *** If you disable port 80, the problem will be masked until a vhost needs to get     ***
     # *** new certs. It will complain about .well-known/* being inaccessible.               ***
+    ports:
       - "80:80/tcp"
       - "443:443/tcp"
+
     volumes:
       - ./network_internal.conf:/etc/nginx/network_internal.conf
-      # Shared with letsencrypt, note certs ro
+
+      # Shared with letsencrypt and dockergen
       - html:/usr/share/nginx/html
       - dhparam:/etc/nginx/dhparam:ro
-      - ./vhost.d:/etc/nginx/vhost.d
+      - vhost.d:/etc/nginx/vhost.d
+
+      # Certificates created by letsencrypt.
       - certs:/etc/nginx/certs:ro
-      - /var/run/docker.sock:/tmp/docker.sock:ro
-    # This labels the container, in either compose or swarm.
-    labels:
-      - "com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy"
+
+      # Contains the default.conf file written by dockergen
+      - conf:/etc/nginx/conf.d:ro
+      
     deploy:
       mode: global
       restart_policy:
@@ -50,7 +61,38 @@ services:
         delay: 5s
         window: 15s
 
-        
+  dockergen:
+    # Watch the docker API on the socket.
+    # Generate a proxy automatically for each web server that is started.
+    # You have to set VIRTUAL_HOST for each web server to trigger it
+
+    image: jwilder/docker-gen
+    labels:
+      - "com.github.jrcs.letsencrypt_nginx_proxy_companion.docker_gen"
+    command: -notify-sighup nginx -watch /etc/docker-gen/templates/nginx.tmpl /etc/nginx/conf.d/default.conf
+    volumes:
+      # This is how docker-gen detects when containers come and go.
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      #
+      # The template docker-gen uses to build and maintain default.conf
+      - ./nginx.tmpl:/etc/docker-gen/templates/nginx.tmpl
+      #
+      # Here is where docker-gen writes the default.conf file
+      - conf:/etc/nginx/conf.d:rw
+      #
+      # Not sure why docker-gen needs this but it does
+      - certs:/etc/nginx/certs:ro
+    networks:
+      proxy_net:
+        aliases:
+          - dockergen
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        window: 15s
+
   letsencrypt:
     # Companion that manages our Let's Encrypt certificates for us.
     # It will create new certs automatically whenever a new server comes online.
@@ -62,10 +104,10 @@ services:
     volumes:
       # Shared with proxy, certs and html have to be writable
       - certs:/etc/nginx/certs:rw
-      - ./vhost.d:/etc/nginx/vhost.d
+      - vhost.d:/etc/nginx/vhost.d
       - html:/usr/share/nginx/html:rw
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - acme:/etc/acme.sh
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     deploy:
       mode: global
       restart_policy:
@@ -74,40 +116,4 @@ services:
         window: 15s
 
 
-  webserver:
-    # Generic static web content is served here.
-    # My intention is that you'll want a landing page
-    # for the hostname and it's convenient to package
-    # it with the proxy and let's encrypt containers.
-
-    # docker-compose can use the env_file
-    # but 'docker stack' cannot, 
-    # so we bake the env settings into a custom image
-    # using 'docker-compose build'.
-    
-    image: wildsong/proxy-webserver:latest
-    env_file: .env
-    build:
-      context: .
-      dockerfile: Dockerfile.webserver
-      args:
-        - VIRTUAL_HOST=${VIRTUAL_HOST}
-        - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
-    networks:
-      proxy_net:
-        aliases:
-          - webserver
-    volumes:
-      - ./static_content:/usr/share/nginx/html
-    deploy:
-      mode: global
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        window: 15s
-    healthcheck:
-      test: ["CMD", "curl", "-f", "https://bellman.wildsong.biz/health.html"]
-      interval: 10m
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+ 

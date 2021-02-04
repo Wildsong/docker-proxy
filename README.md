@@ -90,20 +90,32 @@ are going on, so the docker-compose file sets up logging.
 
 You can check the contents of the volumes too, they are
 
-* proxy_certs -- holds the letsencrypt certificates
-* proxy_conf -- nginx configuration
-* proxy_dhparam -- just holds the dhparam.pem file (this file gets copied to certs)
-* proxy_vhost -- holds nginx virtual host files 
 * proxy_html -- letsencrypt uses this and needs to write files to it
+* proxy_certs -- holds the letsencrypt certificates
+* proxy_dhparam -- just holds the dhparam.pem file (this file gets copied to certs)
 
-Anyway, logging. It's set to use syslog and that means it's going into
-the logs on the host machine. It's up to you to make sure the logs
-don't overflow.  I am going to be setting up log analysis as a
-separate task. I wonder if I can do that in a Docker, too? Hmm.
+In the local space are more volumes,
+* html/ -- static content for webserver
+* network_internal.conf -- rules on who can access this server
+* vhost.d -- holds per-virtualhost config files
+* nginx.tmpl --
 
+nginx.tmpl is a file from the github repository for docker-gen.
+You can copy it like this:
 
+```bash
+curl -o nginx.tmpl https://raw.githubusercontent.com/jwilder/docker-gen/master/templates/nginx.tmpl
+```
 
-Regarding this error
+and then edit it. I changed it to return a 444 instead of 503.
+444 = just cut off the connection 503 = return an error page
+
+I wanted to just drop the connection when a request for
+https://YourIpAddress/ comes in but you have to send a self-signed
+certificate because it has to set up a connection first and then drop
+it.
+
+## Regarding this error
 
     $ docker logs proxy_letsencrypt.1.jx1ski4niofyam6vj95vyxn2t
     jq: error (at <stdin>:1): Cannot iterate over null (null)
@@ -129,15 +141,16 @@ The other relevant red flag is in the nginx logs and it says this
 * Customize .env
 * Launch it
 
-````
+```bash
 docker stack deploy -c docker-compose.yml proxy
-````
+```
+
 If it says it created a network called proxy_default you did something wrong.
 
 
 ### Some commands
 
-Reload nginx without redeploy
+Reload nginx reverse proxy without redeploy
 
     docker exec -it proxy_proxy* sh -c "nginx -s reload"
 
