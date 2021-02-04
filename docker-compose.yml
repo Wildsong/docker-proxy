@@ -1,7 +1,5 @@
 version: "3.7"
 volumes:
-  html:
-    name: proxy_html
   certs:
     name: proxy_certs
   dhparam:
@@ -22,7 +20,7 @@ networks:
     external: true
 
 services:
-  nginx:
+  proxy:
     # This is the nginx reverse proxy and static content server.
     # This image has values from .env baked into it. Otherwise, it's a standard nginx.
     image: nginx
@@ -30,8 +28,6 @@ services:
       - "com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy"
     networks:
       proxy_net:
-        aliases:
-          - nginx
   
     # *** LET'S ENCRYPT WON'T WORK UNLESS port 80 and 443 are both visible on the INTERNET  ***
     # *** If you disable port 80, the problem will be masked until a vhost needs to get     ***
@@ -44,7 +40,7 @@ services:
       - ./network_internal.conf:/etc/nginx/network_internal.conf
 
       # Shared with letsencrypt and dockergen
-      - html:/usr/share/nginx/html
+      - ./html:/usr/share/nginx/html:ro
       - dhparam:/etc/nginx/dhparam:ro
       - vhost.d:/etc/nginx/vhost.d
 
@@ -69,6 +65,7 @@ services:
     image: jwilder/docker-gen
     labels:
       - "com.github.jrcs.letsencrypt_nginx_proxy_companion.docker_gen"
+
     command: -notify-sighup nginx -watch /etc/docker-gen/templates/nginx.tmpl /etc/nginx/conf.d/default.conf
     volumes:
       # This is how docker-gen detects when containers come and go.
@@ -84,8 +81,6 @@ services:
       - certs:/etc/nginx/certs:ro
     networks:
       proxy_net:
-        aliases:
-          - dockergen
     deploy:
       mode: global
       restart_policy:
@@ -99,13 +94,11 @@ services:
     image: jrcs/letsencrypt-nginx-proxy-companion:2.0.1
     networks:
       proxy_net:
-        aliases:
-          - letsencrypt
     volumes:
       # Shared with proxy, certs and html have to be writable
       - certs:/etc/nginx/certs:rw
       - vhost.d:/etc/nginx/vhost.d
-      - html:/usr/share/nginx/html:rw
+      - ./html:/usr/share/nginx/html:rw
       - acme:/etc/acme.sh
       - /var/run/docker.sock:/var/run/docker.sock:ro
     deploy:
@@ -115,5 +108,3 @@ services:
         delay: 5s
         window: 15s
 
-
- 
