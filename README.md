@@ -24,7 +24,7 @@ I make it "attachable" so that it can be shared among different apps.
 
 Example for pi-hole; in the docker-compose.yml for pi-hole I have
 
-````
+```
   networks:
     - proxy-net
   environment:
@@ -32,31 +32,49 @@ Example for pi-hole; in the docker-compose.yml for pi-hole I have
     VIRTUAL_PORT: 80 # This is only needed if you run on a different port.
   expose:
     - "80"
-````
+```
 
 If you want the proxy to set up an SSL certificate too then it needs more:
 
-````
+```
   environment:
     LETSENCRYPT_HOST: pihole.wildsong.biz
     LETSENCRYPT_MAIL: webmaster@wildsong.biz   (This line is optional but a good idea)
-````
+```
 
 I created the dhparam volume and copied my old nginx dhparam.pem file
 into it but you can let it create one for you and skip this.
 
-````
+```
 docker volume create proxy_dhparam
 sudo cp dhparam.pem /home/docker/volumes/proxy_dhparam/_data/
 docker volume create proxy_certs
 sudo cp -r /etc/letsencrypt/* /home/docker/volumes/proxy_certs/_data/
-````
+```
 
 Also I created the certs volume and copied my old /etc/letsencrypt
 files into it.
 
 If you don't need to preserve old files you can just forget this and
 let docker create new (empty) volumes for you.
+
+
+### Swarm vs Compose
+
+I have used Docker Compose in the testing phase for this project but I
+find that the order in which containers start is important, and if I
+run Docker Swarm instead then containers can die and restart a few
+times until they all come online so order does not matter.
+
+There are "depends_on" settings for Compose that will be ignored in Swarm.
+
+
+### Static content
+
+My feeling currently is that there should be no attempt at serving
+static content from the nginx instance here, it should only do the
+reverse proxy. If you want to serve any content, manage it as a
+separate project, just as you would any other application server.
 
 
 ### Basic Auth
@@ -82,11 +100,13 @@ which is the volume mounted at /etc/nginx/vhost.d in the proxy docker.
 
 Currently I have set up these files to accept CORS requests from ANYWHERE.
 
+
 ### Checking out what's going on
 
-All output directed to STDOUT and STDERR from Docker containers is regarded as
-log data. I especially want to be able to analyze web logs to see what interesting things
-are going on, so the docker-compose file sets up logging.
+All output directed to STDOUT and STDERR from Docker containers is
+regarded as log data. I especially want to be able to analyze web logs
+to see what interesting things are going on, so the docker-compose
+file sets up logging.
 
 You can check the contents of the volumes too, they are
 
@@ -95,7 +115,6 @@ You can check the contents of the volumes too, they are
 * proxy_dhparam -- just holds the dhparam.pem file (this file gets copied to certs)
 
 In the local space are more volumes,
-* html/ -- static content for webserver
 * network_internal.conf -- rules on who can access this server
 * vhost.d -- holds per-virtualhost config files
 * nginx.tmpl --
@@ -112,28 +131,7 @@ and then edit it. I changed it to return a 444 instead of 503.
 
 I wanted to just drop the connection when a request for
 https://YourIpAddress/ comes in but you have to send a self-signed
-certificate because it has to set up a connection first and then drop
-it.
-
-## Regarding this error
-
-    $ docker logs proxy_letsencrypt.1.jx1ski4niofyam6vj95vyxn2t
-    jq: error (at <stdin>:1): Cannot iterate over null (null)
-    Error: can't get docker-gen container id !
-    If you are running a three containers setup, check that you are doing one of the following :
-        - Set the NGINX_DOCKER_GEN_CONTAINER env var on the letsencrypt-companion container to the name of the docker-gen container.
-        - Label the docker-gen container to use with 'com.github.jrcs.letsencrypt_nginx_proxy_companion.docker_gen.'
-
-NONE OF THE SUGGESTIONS IT GIVES HELP!!
-
-I am not running a 3 container setup. This means the nginx instance is dying,
-try removing default.conf file (it's generated automatically anyway)
-and start again...
-
-The other relevant red flag is in the nginx logs and it says this
-
-    invalid number of arguments in "upstream" directive in /etc/nginx/conf.d/default.conf
-
+certificate because it has to set up a connection first and then drop it.
 
 ## How to start the proxy
 
@@ -145,8 +143,14 @@ The other relevant red flag is in the nginx logs and it says this
 docker stack deploy -c docker-compose.yml proxy
 ```
 
-If it says it created a network called proxy_default you did something wrong.
+I tend to run Docker Compose in testing because it dumps out tons of
+debug messages on my console.
 
+```bash
+docker-compose up
+```
+
+If it says it created a network called proxy_default you did something wrong.
 
 ### Some commands
 
