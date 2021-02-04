@@ -68,6 +68,10 @@ times until they all come online so order does not matter.
 
 There are "depends_on" settings for Compose that will be ignored in Swarm.
 
+2021-02-04 SWARM NOT WORKING -- because docker-gen needs to know the
+containerId for nginx.  There is a PR to fix this, someday it will go
+in and I can change over so FOR NOW IT'S DOCKER-COMPOSE or nothing. :-(
+
 
 ### Static content
 
