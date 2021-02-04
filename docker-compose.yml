@@ -4,15 +4,13 @@ volumes:
     name: proxy_certs
   dhparam:
     name: proxy_dhparam
+  html:
+    name: proxy_html
   acme:
     name: proxy_letsencrypt_acme
   conf:
     name: proxy_conf
  
-  vhost.d: 
-    external: true
-
-   
 networks:
   # Any services that want to be proxied need to use this network
   proxy_net:
@@ -21,8 +19,7 @@ networks:
 
 services:
   proxy:
-    # This is the nginx reverse proxy and static content server.
-    # This image has values from .env baked into it. Otherwise, it's a standard nginx.
+    # This is the nginx-based reverse proxy.
     image: nginx
     labels:
       - "com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy"
@@ -40,9 +37,9 @@ services:
       - ./network_internal.conf:/etc/nginx/network_internal.conf
 
       # Shared with letsencrypt and dockergen
-      - ./html:/usr/share/nginx/html:ro
+      - html:/usr/share/nginx/html:ro
       - dhparam:/etc/nginx/dhparam:ro
-      - vhost.d:/etc/nginx/vhost.d
+      - ./vhost.d:/etc/nginx/vhost.d
 
       # Certificates created by letsencrypt.
       - certs:/etc/nginx/certs:ro
@@ -50,6 +47,7 @@ services:
       # Contains the default.conf file written by dockergen
       - conf:/etc/nginx/conf.d:ro
       
+    # This is for swarm only, docker-compose ignores it.
     deploy:
       mode: global
       restart_policy:
@@ -81,6 +79,10 @@ services:
       - certs:/etc/nginx/certs:ro
     networks:
       proxy_net:
+    # This is for docker-compose only, swarm ignores it.
+    depends_on:
+      - proxy
+    # This is for swarm only, docker-compose ignores it.
     deploy:
       mode: global
       restart_policy:
@@ -94,13 +96,23 @@ services:
     image: jrcs/letsencrypt-nginx-proxy-companion:2.0.1
     networks:
       proxy_net:
+    environment:
+      # Don't generate keys on BOTH proxy and letsencrypt, we share one!
+      DHPARAM_GENERATION: "false"
     volumes:
       # Shared with proxy, certs and html have to be writable
       - certs:/etc/nginx/certs:rw
-      - vhost.d:/etc/nginx/vhost.d
-      - ./html:/usr/share/nginx/html:rw
+      - ./vhost.d:/etc/nginx/vhost.d
+      - dhparam:/etc/nginx/dhparam:ro
+      - html:/usr/share/nginx/html:rw
       - acme:/etc/acme.sh
+      # Watch the docker API.
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    # This is for docker-compose only, swarm ignores it.
+    depends_on:
+      - proxy
+      - dockergen
+    # This is for swarm only, docker-compose ignores it.
     deploy:
       mode: global
       restart_policy:
