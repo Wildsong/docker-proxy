@@ -58,7 +58,6 @@ files into it.
 If you don't need to preserve old files you can just forget this and
 let docker create new (empty) volumes for you.
 
-
 ### Swarm vs Compose
 
 I have used Docker Compose in the testing phase for this project but I
@@ -144,6 +143,7 @@ certificate because it has to set up a connection first and then drop it.
 * Launch it
 
 ```bash
+SEE NOTE ABOVE on Stack VS Compose
 docker stack deploy -c docker-compose.yml proxy
 ```
 
