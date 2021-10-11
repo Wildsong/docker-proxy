@@ -12,6 +12,11 @@ volumes:
     name: proxy_conf
   htpasswd:
     name: proxy_htpasswd
+    
+  photoshow_config:
+    name: photoshow_config
+  photoshow_thumbs:
+    name: photoshow_thumbs
 
 networks:
   # Any services that want to be proxied need to use this network
@@ -143,3 +148,46 @@ services:
 #        delay: 5s
 #        window: 15s
 
+  photoshow:
+    image: linuxserver/photoshow:latest
+    depends_on:
+      - proxy
+    env_file: .env
+    environment:
+# Uncomment for nginx proxy, note that
+# we don't use this set up because we don't have a subdomain for this service, 
+# instead we use https://giscache/photoshow/
+#      VIRTUAL_HOST: ${PHOTOSHOW_VIRTUAL_HOST}
+#      VIRTUAL_PORT: ${PHOTOSHOW_VIRTUAL_PORT}
+#      NETWORK_ACCESS: internal
+      TZ: ${TIMEZONE}
+      PUID: 1000
+      PGID: 1000
+    volumes:
+      - photoshow_config:/config
+      - /media/photoshow:/Pictures
+      - photoshow_thumbs:/Thumbs
+    networks:
+      proxy_net:
+        aliases:
+          - photoshow
+
+    # for docker-compose	  
+    restart: unless-stopped
+
+    # for swarm
+    #deploy:
+    #  mode: global
+    #  restart_policy:
+    #    condition: any
+    #    delay: 5s
+    #    window: 15s
+    #    max_attempts: 10
+    
+# There is a separate "healtcheck.sh" cron job running in the host, don't use this.
+#    healthcheck:
+#      test: ["CMD", "/usr/bin/curl", "-f", "http://localhost:80/"]
+#      interval: 10s
+#      timeout: 10s
+#      retries: 3
+#      start_period: 30s
