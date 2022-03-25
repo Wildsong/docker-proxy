@@ -1,0 +1,40 @@
+## Start of configuration add by letsencrypt container
+location ^~ /.well-known/acme-challenge/ {
+    auth_basic off;
+    auth_request off;
+    allow all;
+    root /usr/share/nginx/html;
+    try_files $uri =404;
+    break;
+}
+## End of configuration add by letsencrypt container
+# Static content for survey documents, see also the volume entry in docker-compose.yml
+location /PDF/ {
+  root /mnt;
+  autoindex on;
+}
+
+location /photoshow {
+  rewrite ^/photoshow$      /   break;
+  rewrite ^/photoshow/(.*)  /$1 break;
+  proxy_pass http://photoshow:80;
+}
+
+# Stupid hack to get around photoshow's rooted paths for /inc and /src
+location /inc {
+  proxy_pass http://photoshow:80;
+}
+location /src {
+  proxy_pass http://photoshow:80;
+}
+location /user {
+  proxy_pass http://photoshow:80;
+}
+location /500 {
+    return 500;
+}
+
+# Property App API photo service
+location /photo {
+  proxy_pass http://property/photo:5002;
+}
