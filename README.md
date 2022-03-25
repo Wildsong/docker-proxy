@@ -98,11 +98,22 @@ assures your edits will not be tossed.
 
 ### Static content
 
-My feeling currently is that there should be no attempt at serving
-static content from the nginx instance here, it should only do the
-reverse proxy. If you want to serve any content, manage it as a
-separate project, just as you would any other application server.
+I guess I am really ambivalent on this idea, I am already running
+nginx here as a reverse proxy so why not allow it to serve
+static content too?
 
+It makes the proxy more complex but then everything else is simpler
+since there is less to keep track of.
+
+Currently I have this, for surveys.
+
+```bash
+# Static content for survey documents, see also the volume entry in docker-compose.yml
+location /PDF/ {
+  root /mnt;
+  autoindex on;
+}
+```
 
 ### Basic Auth
 

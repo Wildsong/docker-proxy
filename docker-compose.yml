@@ -55,9 +55,14 @@ services:
       - certs:/etc/nginx/certs:ro
 
       # Contains the default.conf file written by dockergen
+      # I don't think this should be in a volume, since it
+      # gets re-written. But I don't want to change it now.
       - conf:/etc/nginx/conf.d:ro
 
       - htpasswd:/etc/nginx/htpasswd:ro
+
+      # Static content for survey documents, see also vhost.d/giscache.*
+      - /media/surveys:/mnt
       
     # for docker-compose	  
     restart: unless-stopped
@@ -149,6 +154,7 @@ services:
 #        window: 15s
 
   photoshow:
+  # A web server for photoshow application
     image: linuxserver/photoshow:latest
     depends_on:
       - proxy
@@ -191,3 +197,5 @@ services:
 #      timeout: 10s
 #      retries: 3
 #      start_period: 30s
+
+# That's all!
