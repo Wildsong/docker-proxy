@@ -72,6 +72,30 @@ containerId for nginx.  There is a PR to fix this, someday it will go
 in and I can change over so FOR NOW IT'S DOCKER-COMPOSE or nothing. :-(
 
 
+### Content under the same domain name
+
+The main app is mapproxy, which grabs https://giscache/
+but I want to run other services under the same name,
+for example https://giscache/photoshow/ and
+https://giscache/property/ which run in separate containers.
+
+This is done with a customized config in vhost.d/giscache file
+
+For example, this is the entry for the property api.
+
+```bash
+# Property App API photo service
+location /photo {
+  proxy_pass http://property/photo:5002;
+}
+```
+
+#### Edits in the config file
+
+Important note: the container (one of them, I don't know which) edits the vhosts.d files on startup
+and shutdown. So the drill is, stop services, wait for them to shut down, edit, restart. This
+assures your edits will not be tossed.
+
 ### Static content
 
 My feeling currently is that there should be no attempt at serving
@@ -135,6 +159,26 @@ and then edit it. I changed it to return a 444 instead of 503.
 I wanted to just drop the connection when a request for
 https://YourIpAddress/ comes in but you have to send a self-signed
 certificate because it has to set up a connection first and then drop it.
+
+### What goes in the headers
+
+This is what's in the default.conf file that gets built by dockergen.
+See /var/lib/docker/volumes/proxy_conf/_data/default.conf
+
+# HTTP 1.1 support
+proxy_http_version 1.1;
+proxy_buffering off;
+proxy_set_header Host $http_host;
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection $proxy_connection;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $proxy_x_forwarded_proto;
+proxy_set_header X-Forwarded-Ssl $proxy_x_forwarded_ssl;
+proxy_set_header X-Forwarded-Port $proxy_x_forwarded_port;
+# Mitigate httpoxy attack (see README for details)
+proxy_set_header Proxy "";
+
 
 ## How to start the proxy
 
