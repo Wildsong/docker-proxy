@@ -90,11 +90,19 @@ location /photo {
 }
 ```
 
+#### Static IP addresses
+
+In docker-compose I have each of the proxied things nailed down to an ip address
+so that I can bring up this container (proxy) and the names will resolve correctly
+even if the linked containers are down. I think this might resolve the thing that
+happens every Sunday when all the containers forget how to talk to each other.
+
 #### Edits in the config file
 
-Important note: the container (one of them, I don't know which) edits the vhosts.d files on startup
-and shutdown. So the drill is, stop services, wait for them to shut down, edit, restart. This
-assures your edits will not be tossed.
+Important note: the container (one of them, I don't know which) edits
+the vhosts.d files on startup and shutdown. So the drill is, stop
+services, wait for them to shut down, edit, restart. This assures your
+edits will not be tossed.
 
 ### Static content
 

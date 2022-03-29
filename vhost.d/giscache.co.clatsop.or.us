@@ -8,12 +8,6 @@ location ^~ /.well-known/acme-challenge/ {
     break;
 }
 ## End of configuration add by letsencrypt container
-# Static content for survey documents, see also the volume entry in docker-compose.yml
-location /PDF/ {
-  root /mnt;
-  autoindex on;
-}
-
 location /photoshow {
   rewrite ^/photoshow$      /   break;
   rewrite ^/photoshow/(.*)  /$1 break;
@@ -34,7 +28,25 @@ location /500 {
     return 500;
 }
 
+# Node test service ("Hello World")
+location /node {
+  proxy_pass http://node:5001;
+}
+
 # Property App API photo service
 location /photo {
-  proxy_pass http://property/photo:5002;
+  proxy_pass http://property:5002/photo;
 }
+
+# Static content for the Property App API
+location /static/ {
+  root /srv;
+  autoindex on;
+}
+
+# Static content for survey documents, see also the volume entry in docker-compose.yml
+location /PDF/ {
+  root /srv/surveys;
+  autoindex on;
+}
+

@@ -4,8 +4,10 @@ volumes:
     name: proxy_certs
   dhparam:
     name: proxy_dhparam
-  html:
+  shared_html:
     name: proxy_html
+  static_html:
+    name: proxy_static
   acme:
     name: proxy_letsencrypt_acme
   conf:
@@ -13,11 +15,6 @@ volumes:
   htpasswd:
     name: proxy_htpasswd
     
-  photoshow_config:
-    name: photoshow_config
-  photoshow_thumbs:
-    name: photoshow_thumbs
-
 networks:
   # Any services that want to be proxied need to use this network
   proxy_net:
@@ -35,6 +32,18 @@ services:
 #      - "com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy"
     networks:
       proxy_net:
+
+    # Nail down the ip addresses to avoid startup problems,
+    # nginx will always be able to reach the proxied hosts at these addresses
+    # (as long as you have set them that way in their docker-compose files,
+    # otherwise you are making things worse.)
+    extra_hosts:
+      - "photoshow:10.0.2.5"
+      - "property:10.0.2.6"
+      - "mapproxy:10.0.2.12"
+      - "capacity:10.0.2.8"
+      - "matomo:10.0.2.70"
+      - "node:10.0.2.11"
   
     # *** LET'S ENCRYPT WON'T WORK UNLESS port 80 and 443 are both visible on the INTERNET  ***
     # *** If you disable port 80, the problem will be masked until a vhost needs to get     ***
@@ -48,7 +57,7 @@ services:
 
       # Shared with letsencrypt and dockergen
       - ./vhost.d:/etc/nginx/vhost.d
-      - html:/usr/share/nginx/html:ro
+      - shared_html:/usr/share/nginx/html:ro
       - dhparam:/etc/nginx/dhparam:ro
 
       # Certificates created by letsencrypt.
@@ -62,7 +71,10 @@ services:
       - htpasswd:/etc/nginx/htpasswd:ro
 
       # Static content for survey documents, see also vhost.d/giscache.*
-      - /media/surveys:/mnt
+      - /media/surveys:/srv/surveys
+      
+      # Static content for property_api, see also vhost.d/giscache.*
+      - static_html:/srv/static:ro
       
     # for docker-compose	  
     restart: unless-stopped
@@ -135,7 +147,7 @@ services:
       - certs:/etc/nginx/certs:rw
       - dhparam:/etc/nginx/dhparam:ro
       - ./vhost.d:/etc/nginx/vhost.d
-      - html:/usr/share/nginx/html:rw
+      - shared_html:/usr/share/nginx/html:rw
       - acme:/etc/acme.sh
       # Watch the docker API.
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -153,42 +165,6 @@ services:
 #        delay: 5s
 #        window: 15s
 
-  photoshow:
-  # A web server for photoshow application
-    image: linuxserver/photoshow:latest
-    depends_on:
-      - proxy
-    env_file: .env
-    environment:
-# Uncomment for nginx proxy, note that
-# we don't use this set up because we don't have a subdomain for this service, 
-# instead we use https://giscache/photoshow/
-#      VIRTUAL_HOST: ${PHOTOSHOW_VIRTUAL_HOST}
-#      VIRTUAL_PORT: ${PHOTOSHOW_VIRTUAL_PORT}
-#      NETWORK_ACCESS: internal
-      TZ: ${TIMEZONE}
-      PUID: 1000
-      PGID: 1000
-    volumes:
-      - photoshow_config:/config
-      - /media/photoshow:/Pictures
-      - photoshow_thumbs:/Thumbs
-    networks:
-      proxy_net:
-        aliases:
-          - photoshow
-
-    # for docker-compose	  
-    restart: unless-stopped
-
-    # for swarm
-    #deploy:
-    #  mode: global
-    #  restart_policy:
-    #    condition: any
-    #    delay: 5s
-    #    window: 15s
-    #    max_attempts: 10
     
 # There is a separate "healtcheck.sh" cron job running in the host, don't use this.
 #    healthcheck:
