@@ -106,14 +106,12 @@ edits will not be tossed.
 
 ### Static content
 
-I guess I am really ambivalent on this idea, I am already running
-nginx here as a reverse proxy so why not allow it to serve
-static content too?
+See the file vhost.d/giscache.*
+where you will see things set up for PDF files (surveys)
+amd property photos (a separate microserver)
+and the photoshow app (a separate service that is proxied)
 
-It makes the proxy more complex but then everything else is simpler
-since there is less to keep track of.
-
-Currently I have this, for surveys.
+For example, for surveys.
 
 ```bash
 # Static content for survey documents, see also the volume entry in docker-compose.yml

@@ -75,7 +75,10 @@ services:
       
       # Static content for property_api, see also vhost.d/giscache.*
       - static_html:/srv/static:ro
-      
+
+      # Static content for precinct documents, see also vhost.d/giscache.*
+      - /media/gis/Clerk_and_Elections/Precincts/Precinct_map_series:/srv/precincts
+
     # for docker-compose	  
     restart: unless-stopped
     # for swarm

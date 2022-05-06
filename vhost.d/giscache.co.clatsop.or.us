@@ -1,13 +1,3 @@
-## Start of configuration add by letsencrypt container
-location ^~ /.well-known/acme-challenge/ {
-    auth_basic off;
-    auth_request off;
-    allow all;
-    root /usr/share/nginx/html;
-    try_files $uri =404;
-    break;
-}
-## End of configuration add by letsencrypt container
 location /photoshow {
   rewrite ^/photoshow$      /   break;
   rewrite ^/photoshow/(.*)  /$1 break;
@@ -50,3 +40,8 @@ location /PDF/ {
   autoindex on;
 }
 
+# Static content for precinct PDF documents, see also the volume entry...
+location /precincts/ {
+  root /srv/precincts;
+  autoindex on;
+}
