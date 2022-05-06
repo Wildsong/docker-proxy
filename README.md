@@ -121,6 +121,15 @@ location /PDF/ {
 }
 ```
 
+make_thumbnails.py is a script to make a thumbnail from the
+first page of a PDF
+
+Do this on a Windows machine, cc-giscache won't have write perms on the folder
+
+conda create --name=proxy wand
+conda activate proxy
+python make_thumbnails.py 
+
 ### Basic Auth
 
 Create an htpasswd file and put it in the proxy_htpasswd volume
