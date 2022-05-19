@@ -169,14 +169,16 @@ server {
 	ssl_session_cache shared:SSL:50m;
 	ssl_session_tickets off;
 
-	# self signed cert
+	# This is from "nginx.tmpl"
+	# Edits in default.conf are futile.
+
+	# self signed cert is unacceptable
 	#ssl_certificate /etc/nginx/certs/default.crt;
 	#ssl_certificate_key /etc/nginx/certs/default.key;
-
 	# This should always be available on this machine because it's our outsider name.
-	# I am pretty sure it will fail here but that's what we want. Yeah. Ask me about it. Or Jason
-	ssl_certificate /etc/nginx/certs/giscache.co.clatsop.or.us.crt;
-	ssl_certificate_key /etc/nginx/certs/giscache.co.clatsop.or.us.key;
+	# I am pretty sure it will fail here but that's what we want. Yeah. Ask Brian about it.
+	ssl_certificate /etc/nginx/certs/giscache.co.clatsop.or.us/fullchain.pem;
+	ssl_certificate_key /etc/nginx/certs/giscache.co.clatsop.or.us/key.pem;
 }
 {{ end }}
 
