@@ -97,6 +97,8 @@ so that I can bring up this container (proxy) and the names will resolve correct
 even if the linked containers are down. I think this might resolve the thing that
 happens every Sunday when all the containers forget how to talk to each other.
 
+See the docker-compose.yml for each entry and look for STATIC_IP_ADDRESS
+
 #### Edits in the config file
 
 Important note: the container (one of them, I don't know which) edits
@@ -116,7 +118,7 @@ For example, for surveys.
 ```bash
 # Static content for survey documents, see also the volume entry in docker-compose.yml
 location /PDF/ {
-  root /mnt;
+  root /srv/survey;
   autoindex on;
 }
 ```
@@ -124,11 +126,11 @@ location /PDF/ {
 make_thumbnails.py is a script to make a thumbnail from the
 first page of a PDF
 
-Do this on a Windows machine, cc-giscache won't have write perms on the folder
-
 conda create --name=proxy wand
 conda activate proxy
-python make_thumbnails.py 
+python make_thumbnails.py /media/gis/Clerk_and_Elections/Precincts/Precinct_map_series
+You can't build the thumbnails directly to the mounted folder
+because it has read only permissions 
 
 ### Basic Auth
 
@@ -231,4 +233,18 @@ If it says it created a network called proxy_default you did something wrong.
 Reload nginx reverse proxy without redeploy
 
     docker exec -it proxy_proxy* sh -c "nginx -s reload"
+
+## Prometheus
+
+for now I just run this at the command line
+
+```bash
+docker run -p 9113:9113 --name nginx-exporter nginx/nginx-prometheus-exporter -nginx.scrape-uri http://giscache.co.clatsop.or.us:80/metrics
+```
+
+Test it with
+
+```bash
+curl http://10.10.10.149:9113/metrics
+```
 

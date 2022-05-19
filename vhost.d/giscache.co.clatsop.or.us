@@ -50,8 +50,17 @@ location /PDF/ {
   autoindex on;
 }
 
-# Static content for precinct PDF documents, see also the volume entry...
+# Static content for precinct PDF documents, see also both volume entries...
 location /precincts/ {
   root /srv;
   autoindex on;
+}
+location /precinct_tn/ {
+  root /srv;
+  autoindex on;
+}
+
+# 2022-05-19 This will allow Prometheus to collect stats
+location /metrics {
+  stub_status;
 }
