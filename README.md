@@ -58,6 +58,12 @@ files into it.
 If you don't need to preserve old files you can just forget this and
 let docker create new (empty) volumes for you.
 
+### Sharing certificates with other apps
+
+You can mount the volume but I added a link for compatibility with my Caddy implementation.
+
+    docker run --rm -v proxy_certs:/srv/certs debian:bullseye "bash ln -s /srv/certs /srv/certs/certificates"
+
 ### Swarm vs Compose
 
 I have used Docker Compose in the testing phase for this project but I
