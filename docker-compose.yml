@@ -2,8 +2,6 @@ version: "3.7"
 volumes:
   certs:
     name: proxy_certs
-  dhparam:
-    name: proxy_dhparam
   shared_html:
     name: proxy_html
   static_html:
@@ -17,124 +15,61 @@ volumes:
     
 networks:
   # Any services that want to be proxied need to use this network
-  proxy_net:
-    name: proxy_net
+  proxy:
+    name: ${NETWORK_NAME}
     external: true
 
 services:
   proxy:
     # This is the nginx-based reverse proxy.
-    container_name: proxy_proxy
-    image: nginx
-
-# Labels never seem to work for me in docker compose
-#    labels:
-#      - "com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy"
+    container_name: proxy_nginx
+    image: nginxproxy/nginx-proxy
+    environment:
+      TRUST_DOWNSTREAM_PROXY: "true"
+      RESOLVERS: "10.10.10.21 10.10.10.22"
     networks:
-      proxy_net:
+      proxy:
         aliases:
           - proxy
-  
     # *** LET'S ENCRYPT WON'T WORK UNLESS port 80 and 443 are both visible on the INTERNET  ***
     # *** If you disable port 80, the problem will be masked until a vhost needs to get     ***
     # *** new certs. It will complain about .well-known/* being inaccessible.               ***
     ports:
       - "80:80/tcp"
       - "443:443/tcp"
-
     volumes:
       - ./network_internal.conf:/etc/nginx/network_internal.conf
-
-      # Shared with letsencrypt and dockergen
       - ./vhost.d:/etc/nginx/vhost.d
       - shared_html:/usr/share/nginx/html:ro
-      - dhparam:/etc/nginx/dhparam:ro
-
       # Certificates created by letsencrypt.
       - certs:/etc/nginx/certs:ro
-
-      # Contains the default.conf file written by dockergen
-      # I don't think this should be in a volume, since it
-      # gets re-written. But I don't want to change it now.
-      - conf:/etc/nginx/conf.d:ro
-
       - htpasswd:/etc/nginx/htpasswd:ro
-
-      # Static content for survey documents, see also vhost.d/giscache.*
-      - /media/surveys:/srv/surveys
-      
-      # Static content for property_api, see also vhost.d/giscache.*
-      - static_html:/srv/static:ro
-
-      # Static content for precinct documents, see also vhost.d/giscache.*
-      - /media/gis/Clerk_and_Elections/Precincts/Precinct_map_series:/srv/precincts
-      - $PWD/precinct_tn:/srv/precinct_tn
-
-    restart: unless-stopped
-
-  dockergen:
-    # Watch the docker API on the socket.
-    # Generate a proxy automatically for each web server that is started.
-    # You have to set VIRTUAL_HOST for each web server to trigger it
-    container_name: proxy_dockergen
-
-    image: jwilder/docker-gen
-
-# Labels never seem to work for me in docker compose
-#    labels:
-#      - "com.github.jrcs.letsencrypt_nginx_proxy_companion.docker_gen"
-
-    command: -notify-sighup proxy_proxy -watch /etc/docker-gen/templates/nginx.tmpl /etc/nginx/conf.d/default.conf
-    volumes:
-      # This is how docker-gen detects when containers come and go.
       - /var/run/docker.sock:/tmp/docker.sock:ro
-      #
-      - ./vhost.d:/etc/nginx/vhost.d
-      #
-      # The template docker-gen uses to build and maintain default.conf
-      - ./nginx.tmpl:/etc/docker-gen/templates/nginx.tmpl
-      #
-      # Here is where docker-gen writes the default.conf file
-      - conf:/etc/nginx/conf.d:rw
-      #
-      # Not sure why docker-gen needs this but it does
-      - certs:/etc/nginx/certs:ro
-    networks:
-      proxy_net:
-        aliases:
-          - dockergen
-    depends_on:
-      - proxy
     restart: unless-stopped
 
   letsencrypt:
     # Companion that manages our Let's Encrypt certificates for us.
     # It will create new certs automatically whenever a new server comes online.
-    image: jrcs/letsencrypt-nginx-proxy-companion:2.0.1
+    container_name: proxy_letsencrypt
+    image: nginxproxy/acme-companion:2.2.5
     networks:
-      proxy_net:
+      proxy:
         aliases:
           - letsencrypt
     environment:
       # Don't generate keys on BOTH proxy and letsencrypt, we share one!
-      DHPARAM_GENERATION: "false"
-
+#      DHPARAM_GENERATION: "false"
     # Don't enable both this and labels
-      NGINX_PROXY_CONTAINER: proxy_proxy
-      NGINX_DOCKER_GEN_CONTAINER: proxy_dockergen
-      
+      NGINX_PROXY_CONTAINER: proxy_nginx
     volumes:
       # Shared with proxy, certs and html have to be writable
       - certs:/etc/nginx/certs:rw
-      - dhparam:/etc/nginx/dhparam:ro
       - ./vhost.d:/etc/nginx/vhost.d
       - shared_html:/usr/share/nginx/html:rw
       - acme:/etc/acme.sh
-      # Watch the docker API.
       - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
       - proxy
-      - dockergen
     # for docker-compose
     restart: unless-stopped
     
