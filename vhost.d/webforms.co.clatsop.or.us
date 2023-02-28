@@ -1,4 +1,0 @@
-# Just for testing. 
-location /500 {
-    return 500;
-}
